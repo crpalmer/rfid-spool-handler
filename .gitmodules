@@ -1,3 +1,6 @@
 [submodule "microdot"]
 	path = microdot
 	url = git@github.com:miguelgrinberg/microdot.git
+[submodule "micropython_pn532"]
+	path = micropython_pn532
+	url = git@github.com:crpalmer/micropython_pn532.git
