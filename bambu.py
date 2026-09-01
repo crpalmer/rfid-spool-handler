@@ -52,6 +52,9 @@ class BambuMQTT:
         self._sequence = 0
         self._ams = {}
         self._response_handlers = {}
+        
+        with open("info_idx.json", "r") as f:
+            self._info_idx_map = json.load(f)
 
     def run(self):
         while True:
@@ -73,11 +76,21 @@ class BambuMQTT:
     def _spool_to_ams(self, extra, spool, key1, key2, transform = lambda x: x):
         if key1 in spool:
             extra[key2] = transform(spool[key1])
-            
+
+    def _default_info_idx(self, spool):
+        vendor = spool["brand"] if "brand" in spool else None
+        filament_type = spool["type"] if "type" in spool else None
+        # TODO: subtype
+        for info_idx in self._info_idx_map:
+            if (vendor is None or ("vendor" in info_idx and info_idx["vendor"] == vendor)) and (filament_type is None or ("type" in info_idx and info_idx["type"] == filament_type)):
+                return info_idx["info_idx"]
+        return "GFL03"
+        
     def send_ams_filament_information(self, ams_id, tray_id, spool):
         extra = { "ams_id": ams_id, "tray_id": tray_id }
         self._spool_to_ams(extra, spool, "info_idx", "tray_info_idx")
-        extra["tray_info_idx"] = "GFA00"
+        if "tray_info_idx" not in extra:
+            extra["tray_info_idx"] = self._default_info_idx(spool)
         self._spool_to_ams(extra, spool, "color_hex", "tray_color", lambda color: color[:6] + "FF")
         self._spool_to_ams(extra, spool, "min_temp", "nozzle_temp_min", lambda s: int(s))
         self._spool_to_ams(extra, spool, "max_temp", "nozzle_temp_max", lambda s: int(s))
@@ -94,7 +107,7 @@ class BambuMQTT:
         if "ams" not in prt or "ams" not in prt["ams"]:
             return
         for ams in prt["ams"]["ams"]:
-            ams_id = ams["id"]
+            ams_id = int(ams["id"])
             
             initializing = False
             if ams_id not in self._ams:
