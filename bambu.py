@@ -3,11 +3,8 @@ import json
 import sys
 import time
 from umqtt.simple import MQTTClient
-from wifi import wifi_connect
 
 import ssl
-
-wifi_connect()
 
 class AMSTray:
     def __init__(self, tray_json):
