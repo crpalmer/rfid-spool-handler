@@ -13,19 +13,22 @@ lock = _thread.allocate_lock()
 spool = None
 spool_timeout = -1
 new_spool_active_ms = 5*60*1000
+send_to_ams_id = -1
+send_to_tray_id = -1
 
 class MQTT(BambuMQTT):
     def on_tray_change(self, ams_id, old_tray, new_tray):
-        global spool
+        global send_to_ams_id
+        global send_to_tray_id
         
         print(f"ams {ams_id} changed {old_tray} -> {new_tray}")
         if old_tray.is_empty() and not new_tray.is_empty():
             lock.acquire()
-            if spool != None and time.ticks_ms() <= spool_timeout:
-                self.send_ams_filament_information(ams_id, new_tray.get_id(), spool)
-                print(f"Loading new spool information: {spool}")
-                spool = None
-                next_light_update = 0		# technically not thread safe but should be okay
+            if spool != None and time.ticks_ms() <= spool_timeout and send_to_ams_id < 0:
+        
+                send_to_ams_id = ams_id
+                send_to_tray_id = new_tray.get_id()
+                print(f"scheduled send to ({send_to_ams_id}, {send_to_tray_id}) for {spool}")
             lock.release()
 
 def rfid_reader():
@@ -38,14 +41,15 @@ def rfid_reader():
         new_spool = None
         while not new_spool:
             new_spool = rfid_reader.get_tag_blocking()
-        while rfid_reader.is_present(100):
-            pass
         lock.acquire()
         spool = new_spool
         spool_timeout = time.ticks_ms() + new_spool_active_ms
         lock.release()
         next_light_update = 0		# technically not thread safe but should be okay
         print(f"queued new spool until {spool_timeout}ms: {spool}")
+        while rfid_reader.is_present(100):
+            pass
+
 
 def light_update(light):
     lock.acquire()
@@ -69,15 +73,13 @@ while True:
     if time.ticks_ms() > next_light_update:
         next_light_update = time.ticks_ms() + 1000
         light_update(light)
-    mqtt.poll()
-    time.sleep_ms(10)
         
-    to_send = None
-    lock.acquire()
-    if spool != None:
-        to_send = spool
-        spool = None
-    lock.release()
-    if to_send != None:
-        mqtt.send_ams_filament_information(0, 0, to_send)
+    mqtt.poll()
     
+    if send_to_ams_id >= 0 and send_to_tray_id >= 0:
+        print(f"Loading new spool information: {spool}")
+        mqtt.send_ams_filament_information(send_to_ams_id, send_to_tray_id, spool)
+        send_to_ams_id = -1
+        spool = None
+    else:
+        time.sleep_ms(10)
