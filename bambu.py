@@ -51,6 +51,7 @@ class BambuMQTT:
         self._client.subscribe(self._response_channel)
         self._sequence = 0
         self._ams = {}
+        self._response_handlers = {}
 
     def run(self):
         while True:
@@ -60,11 +61,28 @@ class BambuMQTT:
         self._client.check_msg()
 
     # Todo map sequence number to a callback function
-    def make_request(self, type, command, extra = {}):
-        request = { type: { "sequence_id": str(self._sequence), "command": command } }
+    def make_request(self, type, command, extra = {}, handle_response = None):
+        payload = { "sequence_id": str(self._sequence), "command": command } | extra
+        request = { type: payload }
+        if handle_response is not None:
+            self._response_handlers[self._sequence] = handle_response
         self._sequence = self._sequence + 1
         print("publish " + str(self._channel) + " --> " + str(request))
         self._client.publish(self._channel, json.dumps(request).encode())
+
+    def _spool_to_ams(self, extra, spool, key1, key2, transform = lambda x: x):
+        if key1 in spool:
+            extra[key2] = transform(spool[key1])
+            
+    def send_ams_filament_information(self, ams_id, tray_id, spool):
+        extra = { "ams_id": ams_id, "tray_id": tray_id }
+        self._spool_to_ams(extra, spool, "info_idx", "tray_info_idx")
+        extra["tray_info_idx"] = "GFA00"
+        self._spool_to_ams(extra, spool, "color_hex", "tray_color", lambda color: color[:6] + "FF")
+        self._spool_to_ams(extra, spool, "min_temp", "nozzle_temp_min", lambda s: int(s))
+        self._spool_to_ams(extra, spool, "max_temp", "nozzle_temp_max", lambda s: int(s))
+        self._spool_to_ams(extra, spool, "type", "tray_type")
+        self.make_request("print", "ams_filament_setting", extra, lambda data: print(data))
 
     def _handle_info(self, info):
         if "command" in info and info["command"] == "get_version":
@@ -72,7 +90,7 @@ class BambuMQTT:
                 if module["visible"]:
                     print(module["product_name"] + ": " + module["sw_ver"])
 
-    def _handle_print(self, prt):
+    def _handle_status(self, prt):
         if "ams" not in prt or "ams" not in prt["ams"]:
             return
         for ams in prt["ams"]["ams"]:
@@ -101,13 +119,29 @@ class BambuMQTT:
         print(f"WRONG METHOD: ams {ams_id} changed {old_tray} -> {new_tray}")
         pass
 
+    def _dispatch_handler(self, data):
+        if "sequence_id" in data and data["sequence_id"] in self._response_handlers:
+            handler = self._response_handlers.pop(data["sequence_id"])
+            handler(data)
+            return True
+        return False
+    
     def _on_message_callback(self, topic, msg_bytes):
-        try:
-            msg = msg_bytes.decode()
-            data = json.loads(msg)
-            if "info" in data:
+#         try:
+        msg = msg_bytes.decode()
+        data = json.loads(msg)
+
+        if self._dispatch_handler(data):
+            return
+
+        if "info" in data:
+            if not self._dispatch_handler(data["info"]):
                 self._handle_info(data["info"])
-            elif "print" in data:
-                self._handle_print(data["print"])
-        except Exception as e:
-            print("failed to parse json: " + str(e))
+        elif "print" in data and "command" in data["print"]:
+            if not self._dispatch_handler(data["print"]):
+                if data["print"]["command"] == "push_status":
+                    self._handle_status(data["print"])
+                else:
+                    print(data)
+#         except Exception as e:
+#             print("failed to parse json: " + str(e))

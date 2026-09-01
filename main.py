@@ -6,6 +6,7 @@ import _thread
 import time
 from wifi import wifi_connect
 
+print("trying to connect to wifi")
 wifi_connect()
 
 lock = _thread.allocate_lock()
@@ -21,6 +22,7 @@ class MQTT(BambuMQTT):
         if old_tray.is_empty() and not new_tray.is_empty():
             lock.acquire()
             if spool != None and time.ticks_ms() <= spool_timeout:
+                self.send_ams_filament_information(ams_id, new_tray.get_id(), spool)
                 print(f"Loading new spool information: {spool}")
                 spool = None
                 next_light_update = 0		# technically not thread safe but should be okay
@@ -55,8 +57,10 @@ def light_update(light):
     else:
         light[0] = (0x00, int((25 * left / new_spool_active_ms) + 1), 0)
     light.write()
-
+    
+time.sleep(0.5)
 _thread.start_new_thread(rfid_reader, ())
+time.sleep(0.5)
 
 light = NeoPixel(Pin(2), 1)
 mqtt = MQTT("192.168.1.22", serial="0948AD561200005", access_code="75875fca")
@@ -67,3 +71,13 @@ while True:
         light_update(light)
     mqtt.poll()
     time.sleep_ms(10)
+        
+    to_send = None
+    lock.acquire()
+    if spool != None:
+        to_send = spool
+        spool = None
+    lock.release()
+    if to_send != None:
+        mqtt.send_ams_filament_information(0, 0, to_send)
+    
