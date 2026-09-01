@@ -1,48 +1,52 @@
 from machine import UART, Pin
-import time
 from pn532.uart import PN532_UART as PN532
 import json
+import time
 
-uart = UART(0, tx=Pin(0), rx=Pin(1), baudrate=115200)
-reset = Pin(2, Pin.OUT)
-pn = PN532(uart) #, reset=reset)
+class Reader:
+    def __init__(self, tx, rx):
+        self._uart = UART(0, tx=Pin(0), rx=Pin(1), baudrate=115200)
+        self._pn = PN532(self._uart) #, reset=reset)
 
-class Record:
-    def __init__(self, pn):
-        data = bytearray()
-        block_num = 4
-        while True:
-            block = pn.ntag2xx_read_block(block_num)
-            if block is None:
-                break
-            data += block
-            block_num += 1
-            done = False
-
-        print("type " + str(data[0]) + " len " + str(data[1]))
-        record = data[2:(2+data[1])]
-        tnf = record[0] & 0x07
-        type_len = record[1]
-        payload_len = record[2]
-        idx = 4 if record[0] & 0x08 else 3
-        type = record[idx:(idx+type_len)]
-        payload = record[(idx+type_len):(idx+type_len+payload_len)]
-        parsed = json.loads(payload)
-        print(parsed)
-        
-while True:
-    while not pn.read_passive_target(timeout=30000):
-        print("waiting")
-        
-    while True:
+    def is_present(self, timeout=100):
         try:
-            Record(pn)
-            break
-        except:
-            if not pn.read_passive_target(timeout=1000):
-                break
-            print("retry read")
-            
-    while pn.read_passive_target(timeout=100):
-        print("go away")
-        time.sleep(0.1)
+            return self._pn.read_passive_target(timeout=timeout) != None
+        except Exception as e:
+            print(f"RFID is present test failed: {e}")
+
+    def poll(self):
+        if (self.is_present()):
+            return self._read_tag()
+    
+    def get_tag_blocking(self):
+        while True:
+            while not self.is_present(30000):
+                pass
+            tag = self._read_tag()
+            if tag != None:
+                return tag
+
+    def _read_tag(self):
+        try:
+            data = bytearray()
+            block_num = 4
+            while True:
+                block = self._pn.ntag2xx_read_block(block_num)
+                if block is None:
+                    break
+                data += block
+                block_num += 1
+                done = False
+
+            record = data[2:(2+data[1])]
+            tnf = record[0] & 0x07
+            type_len = record[1]
+            payload_len = record[2]
+            idx = 4 if record[0] & 0x08 else 3
+            type = record[idx:(idx+type_len)]
+            payload = record[(idx+type_len):(idx+type_len+payload_len)]
+            parsed = json.loads(payload)
+            return parsed
+        except Exception as e:
+            print("Failed to process rfid payload: " + str(e))
+            return None

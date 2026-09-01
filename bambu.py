@@ -10,30 +10,35 @@ import ssl
 wifi_connect()
 
 class AMSTray:
-    def __init__(self, tray_id, filament_type=None, color=None, info_idx=None, nozzle_temp_max=0, nozzle_temp_min=0):
-        self.tray_id = tray_id
-        self.type = filament_type
-        self.color = color
-        self.info_idx = info_idx
-        self.nozzle_temp_max = nozzle_temp_max
-        self.nozzle_temp_min = nozzle_temp_min
+    def __init__(self, tray_json):
+        self._json = tray_json
+
+    def is_empty(self):
+        return self.get_type() == None
+
+    def _get(self, key, default = None):
+        return self._json[key] if key in self._json else default
     
-    @classmethod
-    def from_json(cls, tray):
-#        print(tray)
-        tray_id = tray["id"]
-        tray_type = tray["tray_type"] if "tray_type" in tray else None
-        color = tray["tray_color"] if "tray_color" in tray else None
-        info_idx = tray["tray_info_idx"] if "tray_info_idx" in tray else None
-        nozzle_temp_max = int(tray["nozzle_temp_max"]) if "nozzle_temp_max" in tray else 0
-        nozzle_temp_min = int(tray["nozzle_temp_min"]) if "nozzle_temp_min" in tray else 0
-        return cls(tray_id, tray_type, color, info_idx, nozzle_temp_max, nozzle_temp_min)
+    def get_id(self):
+        return int(self._get("id", -1))
+    
+    def get_type(self):
+        return self._get("tray_type")
+    
+    def get_color(self):
+        return self._get("tray_color")
+    
+    def get_info_idx(self):
+        return self._get("tray_info_idx")
+    
+    def get_nozzle_temps(self):
+        return [ int(self._get("nozzle_temp_min", 0)), int(self._get("nozzle_temp_max", 0))]
     
     def __eq__(self, other):
-        return self.tray_id == other.tray_id and self.type == other.type and self.color == other.color and self.info_idx == other.info_idx and self.nozzle_temp_max == other.nozzle_temp_max and self.nozzle_temp_min == other.nozzle_temp_min
+        return self.get_id() == other.get_id() and self.get_type() == other.get_type() and self.get_color() == other.get_color() and self.get_info_idx() == other.get_info_idx() and self.get_nozzle_temps() == other.get_nozzle_temps()
                 
     def __str__(self):
-        return f"({self.tray_id}, {self.type}, {self.color}, {self.info_idx}, {self.nozzle_temp_min}..{self.nozzle_temp_max})"
+        return "<empty>" if self.is_empty() else f"({self.get_id()}, {self.get_type()}, {self.get_color()}, {self.get_info_idx()}, {self.get_nozzle_temps()})"
 
 class BambuMQTT:
     def __init__(self, ip, serial, access_code):
@@ -83,16 +88,21 @@ class BambuMQTT:
                 
             trays = self._ams[ams_id]
             for tray_json in ams["tray"]:
-                tray = AMSTray.from_json(tray_json)
+                tray = AMSTray(tray_json)
+                tray_id = tray.get_id()
                 if initializing:
-                    trays[tray.tray_id] = tray
+                    trays[tray_id] = tray
                     print("initial tray " + str(tray))
-                elif tray.tray_id not in trays:
-                    trays[tray.tray_id] = tray
-                    print("new tray " + str(tray))
-                elif trays[tray.tray_id] != tray:
-                    print("changed tray " + str(tray))
-                    trays[tray.tray_id] = tray
+                elif tray_id not in trays:
+                    self.on_tray_change(ams_id, None, tray)
+                    trays[tray_id] = tray
+                elif trays[tray_id] != tray:
+                    self.on_tray_change(ams_id, trays[tray_id], tray)
+                    trays[tray_id] = tray
+
+    def on_tray_change(self, ams_id, old_tray, new_tray):
+        print(f"WRONG METHOD: ams {ams_id} changed {old_tray} -> {new_tray}")
+        pass
 
     def _on_message_callback(self, topic, msg_bytes):
         try:
@@ -104,8 +114,3 @@ class BambuMQTT:
                 self._handle_print(data["print"])
         except Exception as e:
             print("failed to parse json: " + str(e))
-
-
-mqtt = BambuMQTT("192.168.1.22", serial="0948AD561200005", access_code="75875fca")
-mqtt.make_request("info", "get_version")
-mqtt.run()
