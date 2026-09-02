@@ -79,12 +79,9 @@ class BambuMQTT:
     def _default_info_idx(self, spool):
         def _match(key):
             if not key in info_idx:
-                print(f"not {key} in {info_idx}")
                 return True
             if not key in spool:
-                print(f"not {key} in {spool}")
                 return False
-            print(f"test {info_idx[key]} == {spool[key]}")
             return info_idx[key] == spool[key]
         
         for info_idx in self._info_idx_map:

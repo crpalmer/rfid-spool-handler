@@ -13,10 +13,12 @@ class Reader:
             return self._pn.read_passive_target(timeout=timeout) is not None
         except Exception as e:
             print(f"RFID is present test failed: {e}")
+            return False
 
     def poll(self):
         if (self.is_present()):
             return self._read_tag()
+        return None
     
     def get_tag_blocking(self):
         while True:

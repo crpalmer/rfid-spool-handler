@@ -82,7 +82,6 @@ def main():
             if spool is not None:
 #                 mqtt.send_ams_filament_information(0, 0, spool)
                 global_state.record_rfid_read(spool)
-                print(mqtt._default_info_idx(spool))
                 rfid_busy = True 
 
         mqtt.poll()
