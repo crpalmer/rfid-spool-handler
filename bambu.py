@@ -1,4 +1,3 @@
-import asyncio
 import json
 import sys
 import time
@@ -78,11 +77,18 @@ class BambuMQTT:
             extra[key2] = transform(spool[key1])
 
     def _default_info_idx(self, spool):
-        vendor = spool["brand"] if "brand" in spool else None
-        filament_type = spool["type"] if "type" in spool else None
-        # TODO: subtype
+        def _match(key):
+            if not key in info_idx:
+                print(f"not {key} in {info_idx}")
+                return True
+            if not key in spool:
+                print(f"not {key} in {spool}")
+                return False
+            print(f"test {info_idx[key]} == {spool[key]}")
+            return info_idx[key] == spool[key]
+        
         for info_idx in self._info_idx_map:
-            if (vendor is None or ("vendor" in info_idx and info_idx["vendor"] == vendor)) and (filament_type is None or ("type" in info_idx and info_idx["type"] == filament_type)):
+            if _match("brand") and _match("type") and _match("subtype"):
                 return info_idx["info_idx"]
         return "GFL03"
         
@@ -155,6 +161,6 @@ class BambuMQTT:
                 if data["print"]["command"] == "push_status":
                     self._handle_status(data["print"])
                 else:
-                    print(data)
+                    print(f"unhandled data: {data}")
 #         except Exception as e:
 #             print("failed to parse json: " + str(e))
