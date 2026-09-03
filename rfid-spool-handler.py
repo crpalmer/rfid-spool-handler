@@ -1,6 +1,7 @@
-from microdot import Microdot
-from microdot import Response
+from microdot.microdot import Microdot, Response
+from microdot.utemplate import Template
 
+import asyncio
 import json
 import machine
 
@@ -11,37 +12,44 @@ wifi_connect()
 Response.default_content_type = 'text/html'
 app = Microdot()
 
+try:
+    with open("printer.json", "r") as f:
+        printer = json.load(f)
+except:
+    printer = { "ip": "", "serial": "", "ac": "" }
+
+def escape_html(text):
+    if not isinstance(text, str):
+        return text
+    # Replace dangerous HTML characters with safe character entities
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#039;"))
+
 @app.route('/')
 async def index(request):
-    return "<html>" + head_html + "<body>" + header_html + index_html.format() + "</body></html>"
+    return Template('index.html').render()
 
-@app.route('/settings/printer')
-async def printer(request):
-    return "<html>" + head_html + "<body>" + header_html + printer_settings_html.format() + "</body></html>"
+@app.route('/printer', methods=['GET', 'POST'])
+async def printer_config(request):
+    if request.form is not None:
+        changed = False
+        for key in [ "ip", "serial", "ac" ]:
+            value = request.form.get(key)
+            if value is not None:
+                printer[key] = value
+                changed = True
+        if changed:
+            with open("printer.json", "w") as f:
+                json.dump(printer, f)
+    return Template('printer.html').render(ip=escape_html(printer["ip"]), serial=escape_html(printer["serial"]), ac=escape_html(printer["ac"]))
 
-head_html = """
-<head>
-  <title>RFID Spool Handler</title>
-  <style>
-.nav-link {
-    padding: 10px;
-}
-</style>
-</head>
-"""
+async def main():
+    asyncio.create_task(app.start_server(port=80))
+    while True:
+        print("still here")
+        await asyncio.sleep(10)
 
-header_html = """
-<h1>RFID Spool Handler</h1>
-<div style="nav"><span class="nav-link"><a href="/">Home<a></span><span class="nav-link"><a href="/settings/printer">Setup Printer</a></span></div>
-"""
-
-index_html = """
-<div>Front Page</div>
-"""
-
-printer_settings_html = """
-<div>Printer settings</div>
-"""
-
-app.run(port=80)
-
+asyncio.run(main())

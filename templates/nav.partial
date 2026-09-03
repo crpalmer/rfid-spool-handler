@@ -1,0 +1,7 @@
+{% args url="" %}
+<div class="nav-left">
+  <div class="tabs">
+    <a {% if url == '/' %} class="active" {% endif %}href="/">Status</a>
+    <a {% if url == 'printer' %} class="active" {% endif %} href="/printer">Printer</a>
+  </div>
+</div>
