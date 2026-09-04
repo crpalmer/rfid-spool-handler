@@ -6,4 +6,4 @@
 	url = git@github.com:crpalmer/micropython_pn532.git
 [submodule "utemplate"]
 	path = utemplate
-	url = git@github.com:pfalcon/utemplate.git
+	url = git@github.com:crpalmer/utemplate.git
