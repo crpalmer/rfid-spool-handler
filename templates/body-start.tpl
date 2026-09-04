@@ -5,6 +5,7 @@
         <div class="nav-left">
             <div class="tabs">
                 <a {% if url == '/' %} class="active" {% endif %}href="/">Status</a>
+                <a {% if url == 'filament' %} class="active" {% endif %}href="/filament">Filament</a>
                 <a {% if url == 'printer' %} class="active" {% endif %} href="/printer">Printer</a>
                 <a {% if url == 'wifi' %} class="active" {% endif %} href="/wifi">WiFi</a>
             </div>

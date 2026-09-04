@@ -13,7 +13,10 @@ new_spool_active_ms = 5*60*1000
 class Notifier(WebServerNotifier):
     def __init__(self):
         super().__init__()
-        
+
+    def on_filament_config_changed(self, filament):
+        global_state.set_filament(filament)
+
     def on_printer_config_changed(self, printer):
         global_state.connect(printer)
 
@@ -28,6 +31,10 @@ class GlobalState:
         self.mqtt = MQTT()
         self.mqtt_is_connected = False
         self.notifier = Notifier()
+        self.filament = {}
+
+    def set_filament(self, filament):
+        self.filament = filament
 
     def connect(self, printer):
         try:
@@ -54,9 +61,30 @@ class GlobalState:
         self.send_to_tray_id = tray_id
         print(f"scheduled send to ({self.send_to_ams_id}, {self.send_to_tray_id}) for {self.spool}")
 
+    def find_info_idx_for_spool(self):
+        spool = self.spool
+        best = None
+        best_quality = -1
+        print(self.filament)
+        for f in self.filament.values():
+            print(f)
+            if 'filament_id' in f and f.get('brand') == spool.get('brand') and f.get('type') == spool.get('type'):
+                quality = 0
+                quality += 1 if f.get('subtype') == spool.get('subtype') else 0
+                quality += 2 if f.get('color_hex') == spool.get('color_hex') else 0
+                if quality > best_quality:
+                    best = f
+                    best_quality = quality
+
+        return best['filament_id'] if best is not None else None
+
     def send_spool_if_ready(self):
         if self.send_to_ams_id >= 0 and self.send_to_tray_id >= 0:
             print(f"Loading new spool information: {self.spool}")
+            if "info_idx" not in self.spool:
+                best_info_idx = find_info_idx_for_spool()
+                temp_spool = {}
+                temp_spool.append(self.spool)
             self.mqtt.send_ams_filament_information(self.send_to_ams_id, self.send_to_tray_id, self.spool)
             self.send_to_ams_id = -1
             self.spool = None
@@ -114,6 +142,7 @@ async def main():
                 spool = rfid_reader.poll()
                 if spool is not None:
                     global_state.record_rfid_read(spool)
+                    print(global_state.find_info_idx_for_spool())
                     rfid_busy = True 
 
         global_state.mqtt_poll()

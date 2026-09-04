@@ -54,9 +54,6 @@ class BambuMQTT:
         self._sequence = 0
         self._ams = {}
         self._response_handlers = {}
-        
-        with open("info_idx.json", "r") as f:
-            self._info_idx_map = json.load(f)
 
     def disconnect(self):
         if self._client is not None:
@@ -84,24 +81,9 @@ class BambuMQTT:
         if key1 in spool:
             extra[key2] = transform(spool[key1])
 
-    def _default_info_idx(self, spool):
-        def _match(key):
-            if not key in info_idx:
-                return True
-            if not key in spool:
-                return False
-            return info_idx[key] == spool[key]
-        
-        for info_idx in self._info_idx_map:
-            if _match("brand") and _match("type") and _match("subtype"):
-                return info_idx["info_idx"]
-        return "GFL03"
-        
     def send_ams_filament_information(self, ams_id, tray_id, spool):
         extra = { "ams_id": ams_id, "tray_id": tray_id }
         self._spool_to_ams(extra, spool, "info_idx", "tray_info_idx")
-        if "tray_info_idx" not in extra:
-            extra["tray_info_idx"] = self._default_info_idx(spool)
         self._spool_to_ams(extra, spool, "color_hex", "tray_color", lambda color: color[:6] + "FF")
         self._spool_to_ams(extra, spool, "min_temp", "nozzle_temp_min", lambda s: int(s))
         self._spool_to_ams(extra, spool, "max_temp", "nozzle_temp_max", lambda s: int(s))
