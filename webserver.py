@@ -25,6 +25,12 @@ try:
 except:
     printer = { "ip": "", "serial": "", "ac": "" }
 
+try:
+    with open("wifi.json", "r") as f:
+        wifi = json.load(f)
+except:
+    wifi = { "ssid": "", "password": "" }
+
 def escape_html(text):
     if not isinstance(text, str):
         return text
@@ -35,27 +41,46 @@ def escape_html(text):
                 .replace('"', "&quot;")
                 .replace("'", "&#039;"))
 
+def form_to_json(request, keys, data, filename):
+    if request.form is None:
+        return False
+    changed = False
+    for key in keys:
+        value = request.form.get(key)
+        if value is not None:
+            if key not in data or data[key] != value:
+                changed = True
+            data[key] = value
+    if changed:
+        with open(filename, "w") as f:
+            json.dump(data, f)
+    return changed
+
 @app.route('/')
 async def index(request):
     return Template('index.tpl').render(mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error)
 
 @app.route('/printer', methods=['GET', 'POST'])
 async def printer_config(request):
-    if request.form is not None:
-        changed = False
-        for key in [ "ip", "serial", "ac" ]:
-            value = request.form.get(key)
-            if value is not None:
-                printer[key] = value
-                changed = True
-        if changed:
-            with open("printer.json", "w") as f:
-                json.dump(printer, f)
-            notifier.on_printer_config_changed(printer)
-    print(notifier.mqtt_error)
+    if form_to_json(request, [ "ip", "serial", "ac" ], printer, "printer.json"):
+        notifier.on_printer_config_changed(printer)
     return Template('printer.tpl').render(
                 ip=escape_html(printer["ip"]), serial=escape_html(printer["serial"]),
                 ac=escape_html(printer["ac"]),
+                mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
+    )
+
+async def restart():
+    await asyncio.sleep(5)
+    machine.reset()
+    
+@app.route('/wifi', methods=['GET', 'POST'])
+async def wifi_config(request):
+    if request.form is not None:
+        if form_to_json(request, [ "ssid", "password" ], wifi, "wifi.json"):
+            asyncio.create_task(restart())
+    return Template('wifi.tpl').render(
+                ssid=escape_html(wifi["ssid"]), password=escape_html(wifi["password"]),
                 mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
     )
 

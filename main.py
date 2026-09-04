@@ -1,7 +1,7 @@
 from bambu import BambuMQTT
 from rfid import Reader as RFIDReader
-from webserver import WebServerNotifier, web_server_start
-from wifi import wifi_connect
+from webserver import WebServerNotifier, web_server_start, wifi
+from wifi import wifi_create_ap, wifi_connect
 
 from machine import Pin
 from neopixel import NeoPixel
@@ -16,7 +16,6 @@ class Notifier(WebServerNotifier):
         
     def on_printer_config_changed(self, printer):
         global_state.connect(printer)
-
 
 class GlobalState:
     def __init__(self):
@@ -120,8 +119,8 @@ async def main():
         global_state.mqtt_poll()
         await asyncio.sleep(0.10)
 
-global_state = GlobalState()
-print("trying to connect to wifi")
-wifi_connect()
+if not wifi_connect(wifi["ssid"], wifi["password"]):
+    wifi_create_ap("rfid-spool-handler")
 
+global_state = GlobalState()
 asyncio.run(main())
