@@ -1,0 +1,4 @@
+data
+templates/*.py
+templates/*.deps
+__pycache__
