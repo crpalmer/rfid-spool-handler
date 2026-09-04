@@ -12,6 +12,7 @@
             <input id="serial" name="serial" type="text" size="20" placeholder="xxxxxxxxxxxxxxx" value="{{serial}}" />
             <label for="ac">Access Code</label>
             <input id="ac" name="ac" type="text" size="20" pattern="[0-9a-fA-F]{8}" placeholder="xxxxxxxx" required value="{{ac}}" />
+            <p>&nbsp;</p>
             <button type="submit">Save</button>
         </form>
     </div>

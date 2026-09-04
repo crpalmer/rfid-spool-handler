@@ -10,6 +10,7 @@
             <input id="ssid" name="ssid" type="text" size="20" placeholder="your-ssid" required value="{{ssid}}" />
             <label for="password">Serial #</label>
             <input id="password" name="password" type="password" size="20" placeholder="xxxxxxxxxxxxxxx" value="{{password}}" />
+            <p>&nbsp;</p>
             <button type="submit">Save</button>
         </form>
     </div>
