@@ -31,16 +31,6 @@ try:
 except:
     wifi = { "ssid": "", "password": "" }
 
-def escape_html(text):
-    if not isinstance(text, str):
-        return text
-    # Replace dangerous HTML characters with safe character entities
-    return (text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace('"', "&quot;")
-                .replace("'", "&#039;"))
-
 def form_to_json(request, keys, data, filename):
     if request.form is None:
         return False
@@ -65,8 +55,7 @@ async def printer_config(request):
     if form_to_json(request, [ "ip", "serial", "ac" ], printer, "printer.json"):
         notifier.on_printer_config_changed(printer)
     return Template('printer.tpl').render(
-                ip=escape_html(printer["ip"]), serial=escape_html(printer["serial"]),
-                ac=escape_html(printer["ac"]),
+                ip=printer["ip"], serial=printer["serial"], ac=printer["ac"],
                 mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
     )
 
@@ -80,7 +69,7 @@ async def wifi_config(request):
         if form_to_json(request, [ "ssid", "password" ], wifi, "wifi.json"):
             asyncio.create_task(restart())
     return Template('wifi.tpl').render(
-                ssid=escape_html(wifi["ssid"]), password=escape_html(wifi["password"]),
+                ssid=wifi["ssid"], password=wifi["password"],
                 mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
     )
 
