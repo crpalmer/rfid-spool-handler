@@ -32,6 +32,7 @@ class GlobalState:
         self.mqtt_is_connected = False
         self.notifier = Notifier()
         self.filament = {}
+        self.last_filament_id = None
 
     def set_filament(self, filament):
         self.filament = filament
@@ -106,6 +107,7 @@ class GlobalState:
 
 class MQTT(BambuMQTT):
     def on_tray_change(self, ams_id, old_tray, new_tray):
+        global_state.last_filament_id = new_tray.get_info_idx()
         print(f"ams {ams_id} changed {old_tray} -> {new_tray}")
         if old_tray.is_empty() and not new_tray.is_empty():
             if global_state.spool_is_sendable():

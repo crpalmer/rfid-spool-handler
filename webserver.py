@@ -79,7 +79,7 @@ async def filament_add(request):
         notifier.on_filament_config_changed(filament)
         return Response.redirect("/filament")
     return Template('filament-add.tpl').render(
-                filament=filament, mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
+                filament=filament, last_filament_id = state.last_filament_id, mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
     )
 
 @app.route('/filament/edit', methods=['GET', 'POST'])
