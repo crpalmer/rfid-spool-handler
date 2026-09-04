@@ -52,7 +52,7 @@ class BambuMQTT:
         self._client.set_callback(lambda topic, msg: self._on_message_callback(topic, msg))
         self._client.subscribe(self._response_channel)
         self._sequence = 0
-        self._ams = {}
+        self.ams = {}
         self._response_handlers = {}
 
     def disconnect(self):
@@ -83,7 +83,7 @@ class BambuMQTT:
 
     def send_ams_filament_information(self, ams_id, tray_id, spool):
         extra = { "ams_id": ams_id, "tray_id": tray_id }
-        self._spool_to_ams(extra, spool, "info_idx", "tray_info_idx")
+        self._spool_to_ams(extra, spool, "filament_id", "tray_info_idx")
         self._spool_to_ams(extra, spool, "color_hex", "tray_color", lambda color: color[:6] + "FF")
         self._spool_to_ams(extra, spool, "min_temp", "nozzle_temp_min", lambda s: int(s))
         self._spool_to_ams(extra, spool, "max_temp", "nozzle_temp_max", lambda s: int(s))
@@ -103,11 +103,11 @@ class BambuMQTT:
             ams_id = int(ams["id"])
             
             initializing = False
-            if ams_id not in self._ams:
-                self._ams[ams_id] = {}
+            if ams_id not in self.ams:
+                self.ams[ams_id] = {}
                 initializing = True
                 
-            trays = self._ams[ams_id]
+            trays = self.ams[ams_id]
             for tray_json in ams["tray"]:
                 tray = AMSTray(tray_json)
                 tray_id = tray.get_id()

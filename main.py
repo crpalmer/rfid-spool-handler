@@ -61,13 +61,11 @@ class GlobalState:
         self.send_to_tray_id = tray_id
         print(f"scheduled send to ({self.send_to_ams_id}, {self.send_to_tray_id}) for {self.spool}")
 
-    def find_info_idx_for_spool(self):
+    def find_filament_id_for_spool(self):
         spool = self.spool
         best = None
         best_quality = -1
-        print(self.filament)
         for f in self.filament.values():
-            print(f)
             if 'filament_id' in f and f.get('brand') == spool.get('brand') and f.get('type') == spool.get('type'):
                 quality = 0
                 quality += 1 if f.get('subtype') == spool.get('subtype') else 0
@@ -81,11 +79,12 @@ class GlobalState:
     def send_spool_if_ready(self):
         if self.send_to_ams_id >= 0 and self.send_to_tray_id >= 0:
             print(f"Loading new spool information: {self.spool}")
-            if "info_idx" not in self.spool:
-                best_info_idx = find_info_idx_for_spool()
+            if "filament_id" not in self.spool:
+                best_filament_id = self.find_filament_id_for_spool()
                 temp_spool = {}
-                temp_spool.append(self.spool)
-            self.mqtt.send_ams_filament_information(self.send_to_ams_id, self.send_to_tray_id, self.spool)
+                temp_spool.update(self.spool)
+                temp_spool["filament_id"] = best_filament_id
+            self.mqtt.send_ams_filament_information(self.send_to_ams_id, self.send_to_tray_id, temp_spool)
             self.send_to_ams_id = -1
             self.spool = None
             self.next_light_update_at = time.ticks_ms()
@@ -122,8 +121,7 @@ def light_update(light):
         light.write()
 
 async def main():
-    print("Starting web server")
-    web_server_start(global_state.notifier)
+    web_server_start(global_state.notifier, global_state)
     try:
         rfid_reader = RFIDReader(Pin(0), Pin(1))
     except:
@@ -131,7 +129,6 @@ async def main():
     light = NeoPixel(Pin(2), 1)
     
     rfid_busy = False
-    print("Entering main loop")
     while True:
         light_update(light)
         
@@ -142,7 +139,6 @@ async def main():
                 spool = rfid_reader.poll()
                 if spool is not None:
                     global_state.record_rfid_read(spool)
-                    print(global_state.find_info_idx_for_spool())
                     rfid_busy = True 
 
         global_state.mqtt_poll()

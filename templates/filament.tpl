@@ -16,7 +16,7 @@
     </div>
 {% for id, f in filament.items() %}
     <div class="row">
-        <div class="col col-1">{[f['filament_id'] if 'filament_id' in f else '']}</div>
+        <div class="col col-1">{[f['filament_id'] if 'filament_id' in f else '?']}</div>
         <div class="col col-1">{[f['type'] if 'type' in f else '']}</div>
         <div class="col col-1">{[f['brand'] if 'brand' in f else '']}</div>
         <div class="col col-2">{[f['subtype'] if 'subtype' in f else '']}</div>

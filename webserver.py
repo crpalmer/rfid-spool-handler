@@ -19,6 +19,7 @@ class WebServerNotifier:
 Response.default_content_type = 'text/html'
 app = Microdot()
 notifier = None
+state = None
 
 try:
     os.mkdir("data")
@@ -55,7 +56,7 @@ def form_to_json(request, keys, data, filename = None):
 
 @app.route('/')
 async def index(request):
-    return Template('index.tpl').render(mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error)
+    return Template('index.tpl').render(ams=state.mqtt.ams, filament=filament, pending=state.spool, mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error)
 
 @app.route('/filament')
 async def filament_list(request):
@@ -131,9 +132,10 @@ async def wifi_config(request):
                 mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
     )
 
-def web_server_start(user_notifier):
-    global notifier
+def web_server_start(user_notifier, global_state):
+    global notifier, state
     notifier = user_notifier
+    state = global_state
     notifier.on_filament_config_changed(filament)
     notifier.on_printer_config_changed(printer)
     asyncio.create_task(app.start_server(port=80, debug=True))
