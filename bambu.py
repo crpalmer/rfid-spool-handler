@@ -37,14 +37,17 @@ class AMSTray:
         return "<empty>" if self.is_empty() else f"({self.get_id()}, {self.get_type()}, {self.get_color()}, {self.get_info_idx()}, {self.get_nozzle_temps()})"
 
 class BambuMQTT:
-    def __init__(self, ip, serial, access_code):
+    def __init__(self):
+        self._client = None
+        
+    def connect(self, ip, serial, access_code):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(cafile="bbl.pem")
 
         self._channel = ("device/" + serial + "/request").encode()
         self._response_channel = ("device/" + serial + "/report").encode()
 
-        self._client = MQTTClient("client", "192.168.1.22", port=8883, user="bblp", password=access_code, ssl=ssl_context)
+        self._client = MQTTClient("client", ip, port=8883, user="bblp", password=access_code, ssl=ssl_context)
         self._client.connect()
         self._client.set_callback(lambda topic, msg: self._on_message_callback(topic, msg))
         self._client.subscribe(self._response_channel)
@@ -55,6 +58,11 @@ class BambuMQTT:
         with open("info_idx.json", "r") as f:
             self._info_idx_map = json.load(f)
 
+    def disconnect(self):
+        if self._client is not None:
+            self._client.disconnect()
+        self._client = None
+        
     def run(self):
         while True:
             self._client.wait_msg()

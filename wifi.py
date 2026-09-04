@@ -1,5 +1,4 @@
-from microdot import Microdot
-from microdot import Response
+from microdot.microdot import Microdot, Response
 
 import asyncio
 import json

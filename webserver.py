@@ -5,12 +5,19 @@ import asyncio
 import json
 import machine
 
-from wifi import wifi_connect
-
-wifi_connect()
+class WebServerNotifier:
+    def __init__(self):
+        self.mqtt_error = None
+        self.wifi_error = None
+        
+    def on_printer_config_changed(self, printer):
+        pass
+    def on_filament_changed(self, filament):
+        pass
 
 Response.default_content_type = 'text/html'
 app = Microdot()
+notifier = None
 
 try:
     with open("printer.json", "r") as f:
@@ -30,7 +37,7 @@ def escape_html(text):
 
 @app.route('/')
 async def index(request):
-    return Template('index.html').render()
+    return Template('index.tpl').render(mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error)
 
 @app.route('/printer', methods=['GET', 'POST'])
 async def printer_config(request):
@@ -44,12 +51,16 @@ async def printer_config(request):
         if changed:
             with open("printer.json", "w") as f:
                 json.dump(printer, f)
-    return Template('printer.html').render(ip=escape_html(printer["ip"]), serial=escape_html(printer["serial"]), ac=escape_html(printer["ac"]))
+            notifier.on_printer_config_changed(printer)
+    print(notifier.mqtt_error)
+    return Template('printer.tpl').render(
+                ip=escape_html(printer["ip"]), serial=escape_html(printer["serial"]),
+                ac=escape_html(printer["ac"]),
+                mqtt_error=notifier.mqtt_error, wifi_error=notifier.wifi_error
+    )
 
-async def main():
-    asyncio.create_task(app.start_server(port=80))
-    while True:
-        print("still here")
-        await asyncio.sleep(10)
-
-asyncio.run(main())
+def web_server_start(user_notifier):
+    global notifier
+    notifier = user_notifier
+    notifier.on_printer_config_changed(printer)
+    asyncio.create_task(app.start_server(port=80, debug=True))
