@@ -12,6 +12,7 @@
             <input id="type" name="type" type="text" placeholder="material type, e.g. PLA, PETG, PLA-S..." value="{[f.get('type', '')]}"  required />
             <label for="subtype">Sub-type</label>
             <input id="subtype" name="subtype" type="text" placeholder="subtype" value="{[f.get('subtype', '')]}" />
+<!--
             <label for="color">Color</label>
             <input id="color" class="chota-color-picker" style="display: block" name="color_hex" type="color" value="{f.get('color_hex', '')]}"/>
             <label for="td">Transmission Distance (TD)</label>
@@ -24,6 +25,7 @@
             <input id="bed_min_temp" name="bed_min_temp" type="number" min="0" max="200" value="{[f.get('bed_min_temp', '')]}"/>
             <label for="bed_max_temp">Bed Maximum Temperature</label>
             <input id="bed_max_temp" name="bed_max_temp" type="number" min="0" max="200" value="{[f.get('bed_max_temp', '')]}"/>
+-->
             <button type="submit">Save Filament</button>
         </form>
         <form action="/filament"><button type="submit">Cancel</button></form>
