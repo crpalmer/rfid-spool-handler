@@ -118,13 +118,12 @@ async def light_task(light):
         await asyncio.sleep_ms(100)
 
 async def rfid_reader_task():
-#     try:
-#         rfid_reader = RFIDReader(Pin(0), Pin(1))
-#     except Exception as e:
-#         print(e)
-#         print("NO RFID READER FOUND\nContinuing in testing mode with no ability to read RFID cards")
-#         return
-    rfid_reader = RFIDReader(Pin(0), Pin(1))
+    try:
+        rfid_reader = RFIDReader(Pin(0), Pin(1))
+    except Exception as e:
+        print(e)
+        print("NO RFID READER FOUND\nContinuing in testing mode with no ability to read RFID cards")
+        return
      
     rfid_busy = False
     while True:
