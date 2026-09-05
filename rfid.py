@@ -1,5 +1,6 @@
 from machine import UART, Pin
 from pn532.uart import PN532_UART as PN532
+import asyncio
 import json
 import time
 
@@ -8,32 +9,27 @@ class Reader:
         self._uart = UART(0, tx=tx, rx=rx, baudrate=115200)
         self._pn = PN532(self._uart, debug=False) #, reset=reset)
 
-    def is_present(self, timeout=100):
+    async def is_present_async(self, timeout=100):
         try:
-            return self._pn.read_passive_target(timeout=timeout) is not None
+            return await self._pn.read_passive_target_async(timeout=timeout) is not None
         except Exception as e:
             print(f"RFID is present test failed: {e}")
             return False
 
-    def poll(self):
-        if (self.is_present()):
-            return self._read_tag()
-        return None
-    
-    def get_tag_blocking(self):
+    async def get_tag_blocking_async(self):
         while True:
-            while not self.is_present(30000):
+            while not await self.is_present(30000):
                 pass
-            tag = self._read_tag()
+            tag = await self._read_tag_async()
             if tag != None:
                 return tag
 
-    def _read_tag(self):
+    async def read_tag_async(self):
         try:
             data = bytearray()
             block_num = 4
             while True:
-                block = self._pn.ntag2xx_read_block(block_num)
+                block = await self._pn.ntag2xx_read_block_async(block_num)
                 if block is None:
                     break
                 data += block
