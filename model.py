@@ -43,6 +43,20 @@ class Model:
         with open("data/printer.json", "w") as f:
             json.dump(printer, f)
 
+    def find_filament_id_for_spool(self, spool):
+        best = None
+        best_quality = -1
+        for f in self.filament.values():
+            if 'filament_id' in f and f.get('brand') == spool.get('brand') and f.get('type') == spool.get('type'):
+                quality = 0
+                quality += 1 if f.get('subtype') == spool.get('subtype') else 0
+                quality += 2 if f.get('color_hex') == spool.get('color_hex') else 0
+                if quality > best_quality:
+                    best = f
+                    best_quality = quality
+        print(best)
+        return best['filament_id'] if best is not None else None
+
     def spool_is_sendable(self):
         return self.spool != None and time.ticks_ms() <= self.spool_timeout and self.send_to_ams_id < 0
 
@@ -50,11 +64,6 @@ class Model:
         self.send_to_ams_id = ams_id
         self.send_to_tray_id = tray_id
         print(f"scheduled send to ({self.send_to_ams_id}, {self.send_to_tray_id}) for {self.spool}")
-
-    def record_rfid_read(self, spool):
-        self.spool = spool
-        self.spool_timeout = time.ticks_ms() + new_spool_active_ms
-        print(f"queued new spool until {self.spool_timeout}ms: {self.spool}")
 
     def get_ams(self):
         return self.ams
@@ -71,13 +80,21 @@ class Model:
     def get_last_filament_id(self):
         return self.last_filament_id
     
+    def record_rfid_read(self, spool):
+        self.spool = spool
+        self.spool_timeout = time.ticks_ms() + 5*60*1000
+        print(f"queued new spool until {self.spool_timeout}ms: {self.spool}")
+
     def get_spool_to_send(self):
-        if self.get_spool_ready_ms() >= time.ticks_ms():
+        if self.spool is not None and self.spool_timeout >= time.ticks_ms():
             return self.spool
         return None
 
-    def get_spool_ready_ms(self):
-        return self.spool_timeout - time.ticks_ms() if self.spool is not None else 0
+    def get_scheduled_send_spool_data(self):
+        spool = self.get_spool_to_send()
+        if self.send_to_ams_id < 0 or spool is None:
+            return (-1, -1, None)
+        return (self.send_to_ams_id, self.send_to_tray_id, spool)
 
     def clear_spool_to_send(self):
         self.send_to_ams_id = -1

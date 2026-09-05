@@ -91,10 +91,10 @@ class BambuMQTT:
             if not self._dispatch_handler(data["info"]):
                 self._handle_info(data["info"])
         elif "print" in data and "command" in data["print"]:
-            if not self._dispatch_handler(data["print"]):
-                if data["print"]["command"] == "push_status":
-                    self._handle_status(data["print"])
-                else:
-                    print(f"unhandled data: {data}")
+            p = data["print"]
+            if p["command"] == "push_status":
+                self._handle_status(p)
+            else:
+                print(f"unhandled data: {data}")
 #         except Exception as e:
 #             print("failed to parse json: " + str(e))

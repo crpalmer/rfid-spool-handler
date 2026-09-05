@@ -13,7 +13,7 @@ async def light_task(light):
         if controller.get_spool_to_send() is None:
             light[0] = (0x10, 0x10, 0x10)
         else:
-            light[0] = (0x00, int((25 * left / new_spool_active_ms) + 1), 0)
+            light[0] = (0x00, 0x20, 0)
         if last_value != light[0]:
             light.write()
             last_value = light[0]
