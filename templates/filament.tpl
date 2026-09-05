@@ -27,8 +27,8 @@
         <div class="col col-1">{[f['td'] if 'td' in f else '']}</div>
         <div class="col col-1">{[f['min_temp'] if 'min_temp' in f else '0']}..{[f['max_temp'] if 'max_temp' in f else '0']}</div>
         <div class="col col-1">{[f['bed_min_temp'] if 'bed_min_temp' in f else '0']}..{[f['bed_max_temp'] if 'bed_max_temp' in f else '0']}</div>
-        <div class="col col-1"><a href="/filament/edit?id={[id]}">edit</a>&nbsp;&nbsp;&nbsp;<a href="/filament/delete?id={[id]}">delete</a></div>
 -->
+        <div class="col col-1"><a href="/filament/edit?id={[id]}">edit</a>&nbsp;&nbsp;&nbsp;<a href="/filament/delete?id={[id]}">delete</a></div>
     </div>
 {% endfor %}
     <div class="row">
