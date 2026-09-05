@@ -60,10 +60,6 @@ class BambuMQTT:
             self._client.disconnect()
         self._client = None
         
-    def run(self):
-        while True:
-            self._client.wait_msg()
-
     def poll(self):
         self._client.check_msg()
 
