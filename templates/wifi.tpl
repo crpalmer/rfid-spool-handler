@@ -8,7 +8,7 @@
         <form action="#" method="post">
             <label for="ssid">SSID</label>
             <input id="ssid" name="ssid" type="text" size="20" placeholder="your-ssid" required value="{[ssid]}" />
-            <label for="password">Serial #</label>
+            <label for="password">Password</label>
             <input id="password" name="password" type="password" size="20" placeholder="xxxxxxxxxxxxxxx" value="{[password]}" />
             <p>&nbsp;</p>
             <button type="submit">Save</button>

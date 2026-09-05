@@ -11,7 +11,10 @@ def wifi_create_ap(ssid, password="password"):
 def wifi_connect(ssid, password):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    
+
+    if ssid is None or ssid == "":
+        return False
+
     print(f"Connecting to WiFi: {ssid}")
     wlan.connect(ssid, password)
     timeout = 30
