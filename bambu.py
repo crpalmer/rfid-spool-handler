@@ -44,6 +44,8 @@ class BambuMQTT:
         self._response_handlers = {}
         
     def connect(self, ip, serial, access_code):
+        if ip is None or ip == "":
+            return
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ssl_context.load_verify_locations(cafile="bbl.pem")
 
@@ -61,7 +63,8 @@ class BambuMQTT:
         self._client = None
         
     def poll(self):
-        self._client.check_msg()
+        if self._client is not None:
+            self._client.check_msg()
 
     # Todo map sequence number to a callback function
     def make_request(self, type, command, extra = {}, handle_response = None):
