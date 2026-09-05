@@ -1,20 +1,23 @@
-{% args ams, filament, pending, mqtt_error, wifi_error %}
+{% args model %}
 <html>
 {% include "head.partial" %}
     <body>
-{% include "body-start.tpl" '/', mqtt_error, wifi_error %}
+{% include "body-start.tpl" '/', model %}
         <h1>Status</h1>
-{% if pending is not None %}
+{% set pending_spool = model.get_spool_to_send() %}
+{% if pending_spool is not None %}
         <h3>Pending Spool Load</h3>
         <div class="row">
           <div class="col col-1">&nbsp;</div>
           <div class="col">
-              <input type="color" readonly value="#{[pending.get('color_hex')]}" style="pointer-events: none" tabindex="-1"/>
-              {[pending.get('type')]}: {[pending.get('brand')]} {[pending.get('subtype', '')]}
+              <input type="color" readonly value="#{[pending_spool.get('color_hex')]}" style="pointer-events: none" tabindex="-1"/>
+              {[pending_spool.get('type')]}: {[pending_spool.get('brand')]} {[pending_spool.get('subtype', '')]}
           </div>
         </div>
         <h3>AMS State</h4>
 {% endif %}
+{% set filament = model.get_filament() %}
+{% set ams = model.get_ams() %}
 {% for ams_id in sorted(ams.keys()) %}
         <h4>AMS #{[ams_id+1]}</h4>
   {% for id in sorted(ams[ams_id].keys()) %}

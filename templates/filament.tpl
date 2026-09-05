@@ -1,8 +1,8 @@
-{% args filament, mqtt_error, wifi_error %}
+{% args model %}
 <html>
 {% include "head.partial" %}
 <body>
-{% include "body-start.tpl" 'filament', mqtt_error, wifi_error %}
+{% include "body-start.tpl" 'filament', model %}
     <h1>Filaments</h1>
     <div class="row">
         <div class="col col-1">ID</div>
@@ -16,7 +16,7 @@
         <div class="col col-1">Bed Temp</div>
 -->
     </div>
-{% for id, f in filament.items() %}
+{% for id, f in model.filament.items() %}
     <div class="row">
         <div class="col col-1">{[f['filament_id'] if 'filament_id' in f else '?']}</div>
         <div class="col col-1">{[f['type'] if 'type' in f else '']}</div>

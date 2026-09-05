@@ -4,10 +4,13 @@ import asyncio
 import json
 import time
 
-class Reader:
+class RFIDReader:
     def __init__(self, tx, rx):
         self._uart = UART(0, tx=tx, rx=rx, baudrate=115200)
         self._pn = PN532(self._uart, debug=False) #, reset=reset)
+
+    def run():
+        asyncio.create_task(self.rfid_reader_task())
 
     async def is_present_async(self, timeout=100):
         try:
@@ -49,3 +52,15 @@ class Reader:
         except Exception as e:
             print("Failed to process rfid payload: " + str(e))
             return None
+
+    async def task(self):
+        rfid_busy = False
+        while True:
+            if rfid_busy:
+                rfid_busy = await self.is_present_async(30000)
+            elif await self.is_present_async(30000):
+                print("is_present!")
+                spool = await self.read_tag_async()
+                if spool is not None:
+                    controller.record_rfid_read(spool)
+                    rfid_busy = True

@@ -1,15 +1,16 @@
-{% args ssid, password, mqtt_error, wifi_error %}
+{% args model %}
 <html>
 {% include "head.partial" %}
 <body>
-{% include "body-start.tpl" 'wifi', mqtt_error, wifi_error %}
+{% include "body-start.tpl" 'wifi', model %}
+{% set wifi = model.get_wifi() %}
     <h1>WiFi Setup</h1>
     <div class="form-container">
         <form action="#" method="post">
             <label for="ssid">SSID</label>
-            <input id="ssid" name="ssid" type="text" size="20" placeholder="your-ssid" required value="{[ssid]}" />
+            <input id="ssid" name="ssid" type="text" size="20" placeholder="your-ssid" required value="{[wifi["ssid"]]}" />
             <label for="password">Password</label>
-            <input id="password" name="password" type="password" size="20" placeholder="xxxxxxxxxxxxxxx" value="{[password]}" />
+            <input id="password" name="password" type="password" size="20" placeholder="xxxxxxxxxxxxxxx" value="{[wifi["password"]]}" />
             <p>&nbsp;</p>
             <button type="submit">Save</button>
         </form>

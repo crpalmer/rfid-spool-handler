@@ -1,4 +1,4 @@
-{% args url, mqtt_error, wifi_error %}
+{% args url, model %}
 <div class="row">
     <div class="col col-1">&nbsp;</div>
     <div class="col col-10">
@@ -11,27 +11,19 @@
             </div>
         </div>
         <div class="row is-center">
-            {% if mqtt_error %}
+            {% if model.mqtt_error %}
                 <div class="col col4 is-center">
                     <div class="card bd-error">
                         <header><h4>MQTT Error</h4></header>
                         <p>
-                            {% if mqtt_error == "1" %}Invalid protocol version
-                            {% elif mqtt_error == "2" %}Client ID rejected
-                            {% elif mqtt_error == "3" %}Server unavailable
-                            {% elif mqtt_error == "4" %}Bad username or password
-                            {% elif mqtt_error == "5" %}Not authorized
+                            {% if model.mqtt_error == "1" %}Invalid protocol version
+                            {% elif model.mqtt_error == "2" %}Client ID rejected
+                            {% elif model.mqtt_error == "3" %}Server unavailable
+                            {% elif model.mqtt_error == "4" %}Bad username or password
+                            {% elif model.mqtt_error == "5" %}Not authorized
                             {% else %}Unknown error code: {{mqtt_error}}
                             {% endif %}
                         </p>
-                    </div>
-                </div>
-            {% endif %}
-            {% if wifi_error %}
-                <div class="col col4 is-center">
-                    <div class="card bd-error">
-                        <header><h4>WiFi Error</h4></header>
-                        <p>{{wifi_error}}</p>
                     </div>
                 </div>
             {% endif %}

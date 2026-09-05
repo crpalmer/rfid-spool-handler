@@ -1,4 +1,5 @@
-{% args action, id = None, f = {} %}
+{% args action, model, id=None %}
+{% set f = model.get_filament().get(id, {}) %}
     <div class="form-container">
         <form action="{[action]}" method="post">
 {% if id is not None %}
