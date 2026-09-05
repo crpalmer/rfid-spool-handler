@@ -39,6 +39,9 @@ class AMSTray:
 class BambuMQTT:
     def __init__(self):
         self._client = None
+        self._sequence = 0
+        self.ams = {}
+        self._response_handlers = {}
         
     def connect(self, ip, serial, access_code):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -51,9 +54,6 @@ class BambuMQTT:
         self._client.connect()
         self._client.set_callback(lambda topic, msg: self._on_message_callback(topic, msg))
         self._client.subscribe(self._response_channel)
-        self._sequence = 0
-        self.ams = {}
-        self._response_handlers = {}
 
     def disconnect(self):
         if self._client is not None:
