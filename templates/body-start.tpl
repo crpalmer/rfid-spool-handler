@@ -11,19 +11,36 @@
             </div>
         </div>
         <div class="row is-center">
-            {% if model.mqtt_error %}
+            {% set mqtt_error = model.get_mqtt_error() %}
+            {% if len(model.mqtt_error) > 0 %}
+                {% set printers = model.get_printers() %}
                 <div class="col col4 is-center">
                     <div class="card bd-error">
                         <header><h4>MQTT Error</h4></header>
+                        {% for (id, error) in mqtt_error.items() %}
                         <p>
-                            {% if model.mqtt_error == "1" %}Invalid protocol version
-                            {% elif model.mqtt_error == "2" %}Client ID rejected
-                            {% elif model.mqtt_error == "3" %}Server unavailable
-                            {% elif model.mqtt_error == "4" %}Bad username or password
-                            {% elif model.mqtt_error == "5" %}Not authorized
-                            {% else %}Unknown error code: {{mqtt_error}}
+                            {% set printer = printers.get(id) %}
+                            {% if printer is not None %}
+                                {[printer.get("name")]}:
+                            {% endif %}
+                            {% if error == "1" %}Invalid protocol version
+                            {% elif error == "2" %}Client ID rejected
+                            {% elif error == "3" %}Server unavailable
+                            {% elif error == "4" %}Bad username or password
+                            {% elif error == "5" %}Not authorized
+                            {% else %}{[error]}
                             {% endif %}
                         </p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            {% set transient_error = model.get_transient_error() %}
+            {% if transient_error is not None %}
+                <div class="col col4 is-center">
+                    <div class="card bd-error">
+                        <header><h4>Error</h4></header>
+                        <p>{[transient_error]}</p>
                     </div>
                 </div>
             {% endif %}

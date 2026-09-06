@@ -5,8 +5,7 @@ import ssl
 from amstray import AMSTray
 
 class BambuMQTT:
-    def __init__(self, controller):
-        self._controller = controller
+    def __init__(self):
         self._client = None
         self._sequence = 0
         self._response_handlers = {}
@@ -70,7 +69,10 @@ class BambuMQTT:
         for ams in prt["ams"]["ams"]:
             ams_id = int(ams["id"])
             for tray in ams["tray"]:
-                self._controller.set_ams_tray(ams_id, AMSTray(tray))
+                self.set_ams_tray(ams_id, AMSTray(tray))
+
+    def set_ams_tray(self, ams_id, tray):
+        pass
 
     def _dispatch_handler(self, data):
         if "sequence_id" in data and data["sequence_id"] in self._response_handlers:
@@ -91,10 +93,10 @@ class BambuMQTT:
             if not self._dispatch_handler(data["info"]):
                 self._handle_info(data["info"])
         elif "print" in data and "command" in data["print"]:
-            p = data["print"]
-            if p["command"] == "push_status":
-                self._handle_status(p)
-            else:
-                print(f"unhandled data: {data}")
+            if not self._dispatch_handler(data["print"]):
+                if data["print"]["command"] == "push_status":
+                    self._handle_status(data["print"])
+                else:
+                    print(f"unhandled data: {data}")
 #         except Exception as e:
 #             print("failed to parse json: " + str(e))

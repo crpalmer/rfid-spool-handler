@@ -2,17 +2,40 @@ import json
 import time
 import os
 
+class SpoolToSend:
+    def __init__(self):
+        self.printer_id = None
+        self.ams_id = -1
+        self.tray_id = -1
+        self.spool = None
+        self.timeout = -1
+
+    def ready(self, spool):
+        self.spool = spool
+        self.timeout = time.ticks_ms() + 5*60*1000
+
+    def scheduled(self, printer_id, ams_id, tray_id):
+        self.printer_id = str(printer_id) # this is a str in the json, just go with it
+        self.ams_id = int(ams_id)
+        self.tray_id = int(tray_id)
+        
+    def is_ready(self):
+        return self.spool != None and self.timeout > time.ticks_ms()
+    
+    def is_scheduled(self):
+        return self.is_ready() and self.printer_id is not None
+
+    def __str__(self):
+        return f"({self.printer_id}, {self.ams_id}, {self.tray_id}, {self.spool}, {self.timeout})"
+
 class Model:
     def __init__(self):
-        self.ams = {}
-        self.spool = None
-        self.spool_timeout = -1
+        self.printer_ams = {}
+        self.spool = SpoolToSend()
         self.new_spool_active_ms = 5*60*1000
-        self.send_to_ams_id = -1
-        self.send_to_tray_id = -1
-        self.filament = {}
         self.last_filament_id = None
-        self.mqtt_error = None
+        self.mqtt_error = {}
+        self.transient_error = None
 
         try:
             os.mkdir("data")
@@ -22,7 +45,7 @@ class Model:
                     raise # Re-raise if it's a different error
 
         self.filament = self._load_data("data/filament.json", {})
-        self.printer = self._load_data("data/printer.json", { "ip": "", "serial": "", "ac": "" })
+        self.printers = self._load_data("data/printers.json", {})
         self.wifi = self._load_data("data/wifi.json", { "ssid": "", "password": "" })
 
     def _load_data(self, filename, default):
@@ -43,30 +66,17 @@ class Model:
         with open("data/printer.json", "w") as f:
             json.dump(printer, f)
 
-    def find_filament_id_for_spool(self, spool):
-        best = None
-        best_quality = -1
-        for f in self.filament.values():
-            if 'filament_id' in f and f.get('brand') == spool.get('brand') and f.get('type') == spool.get('type'):
-                quality = 0
-                quality += 1 if f.get('subtype') == spool.get('subtype') else 0
-                quality += 2 if f.get('color_hex') == spool.get('color_hex') else 0
-                if quality > best_quality:
-                    best = f
-                    best_quality = quality
-        print(best)
-        return best['filament_id'] if best is not None else None
+    def schedule_send_spool(self, printer_id, ams_id, tray_id):
+        if self.spool.is_ready():
+            self.spool.scheduled(printer_id, ams_id, tray_id)
+            print(f"scheduled send: {self.spool}")
 
-    def spool_is_sendable(self):
-        return self.spool != None and time.ticks_ms() <= self.spool_timeout and self.send_to_ams_id < 0
+    def record_rfid_read(self, spool):
+        self.spool.ready(spool)
+        print(f"queued new spool: {self.spool}")
 
-    def schedule_send_spool(self, ams_id, tray_id):
-        self.send_to_ams_id = ams_id
-        self.send_to_tray_id = tray_id
-        print(f"scheduled send to ({self.send_to_ams_id}, {self.send_to_tray_id}) for {self.spool}")
-
-    def get_ams(self):
-        return self.ams
+    def get_ams(self, printer_id):
+        return self.printer_ams.get(printer_id, {})
     
     def get_filament(self):
         return self.filament
@@ -74,52 +84,42 @@ class Model:
     def get_wifi(self):
         return self.wifi
     
-    def get_printer_config(self):
-        return self.printer
+    def get_printers(self):
+        return self.printers
     
     def get_last_filament_id(self):
         return self.last_filament_id
     
-    def record_rfid_read(self, spool):
-        self.spool = spool
-        self.spool_timeout = time.ticks_ms() + 5*60*1000
-        print(f"queued new spool until {self.spool_timeout}ms: {self.spool}")
+    def clear_spool_to_send(self):
+        self.spool = SpoolToSend()
 
     def get_spool_to_send(self):
-        if self.spool is not None and self.spool_timeout >= time.ticks_ms():
-            return self.spool
-        return None
+        return self.spool
 
-    def get_scheduled_send_spool_data(self):
-        spool = self.get_spool_to_send()
-        if self.send_to_ams_id < 0 or spool is None:
-            return (-1, -1, None)
-        return (self.send_to_ams_id, self.send_to_tray_id, spool)
-
-    def clear_spool_to_send(self):
-        self.send_to_ams_id = -1
-        self.spool = None
-
-    def set_ams_tray(self, ams_id, tray):
-        if ams_id not in self.ams:
-            self.ams[ams_id] = {}
-        ams = self.ams[ams_id]
+    def set_ams_tray(self, printer_id, ams_id, tray):
+        if printer_id not in self.printer_ams:
+            self.printer_ams[printer_id] = {}
+        printer_ams = self.get_ams(printer_id)
+        if ams_id not in printer_ams:
+            printer_ams[ams_id] = {}
+        ams = printer_ams[ams_id]
         tray_id = tray.get_id()
         if tray_id not in ams:
             ams[tray_id] = tray
-            return None
-        else:
+        elif tray != ams[tray_id]:
             old_tray = ams[tray_id]
             ams[tray_id] = tray
             self.last_filament_id = tray.get_info_idx()
             return old_tray
-
+        return None
+    
     def add_filament(self, new_filament):
         id = len(self.filament)
         while str(id) in self.filament:
             id += 1
         self.filament[str(id)] = new_filament
         self._save_filament()
+        return id
 
     def update_filament(self, id, filament):
         self.filament[id] = filament
@@ -133,10 +133,47 @@ class Model:
         with open("data/filament.json", "w") as f:
             json.dump(self.filament, f)
 
+    def add_printer(self, printer):
+        id = len(self.printers)
+        while str(id) in self.printers:
+            id += 1
+        self.printers[str(id)] = printer
+        self._save_printers()
+        return id
+
+    def update_printer(self, id, printer):
+        self.printers[id] = printer
+        self._save_printers()
+
+    def delete_printer(self, id):
+        self.printers.pop(id, None)
+        self._save_printers()
+    def _save_printers(self):
+        with open("data/printers.json", "w") as f:
+            json.dump(self.printers, f)
+
     def set_wifi_config(self, wifi):
         self.wifi = wifi
         with open("data/wifi.json", "w") as f:
             json.dump(wifi, f)
 
-    def set_mqtt_error(self, error):
-        self.mqtt_error = error
+    def set_mqtt_error(self, printer_id, error):
+        print("{printer_id}: {error}")
+        self.mqtt_error[printer_id] = error
+    
+    def clear_mqtt_error(self, printer_id):
+        self.mqtt_error.pop(printer_id, None)
+        
+    def get_mqtt_error(self):
+        return self.mqtt_error
+
+    def add_transient_error(self, error):
+        if self.transient_error is None:
+            self.transient_error = error
+        else:
+            self.transient_error += f" | {error}"
+
+    def get_transient_error(self):
+        error = self.transient_error
+        self.transient_error = None
+        return error

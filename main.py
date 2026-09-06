@@ -10,10 +10,10 @@ from webserver import web_server_start
 async def light_task(light):
     last_value = (-1, -1, -1)
     while True:
-        if controller.get_spool_to_send() is None:
-            light[0] = (0x10, 0x10, 0x10)
-        else:
+        if controller.get_spool_to_send().is_ready():
             light[0] = (0x00, 0x20, 0)
+        else:
+            light[0] = (0x10, 0x10, 0x10)
         if last_value != light[0]:
             light.write()
             last_value = light[0]

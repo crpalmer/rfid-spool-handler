@@ -2,7 +2,7 @@ from machine import UART, Pin
 from pn532.uart import PN532_UART as PN532
 import asyncio
 import json
-import time
+import sys
 
 from controller import controller
 
@@ -12,7 +12,7 @@ class RFIDReader:
         self._pn = PN532(self._uart, debug=False) #, reset=reset)
 
     def run(self):
-        asyncio.create_task(self.rfid_reader_task())
+        asyncio.create_task(self._task())
 
     async def is_present_async(self, timeout=100):
         try:
@@ -53,9 +53,10 @@ class RFIDReader:
             return parsed
         except Exception as e:
             print("Failed to process rfid payload: " + str(e))
+            sys.print_exception(e)
             return None
 
-    async def rfid_reader_task(self):
+    async def _task(self):
         rfid_busy = False
         while True:
             if rfid_busy:
