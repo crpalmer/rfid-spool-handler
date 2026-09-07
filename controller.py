@@ -1,5 +1,6 @@
 import asyncio
 import machine
+import sys
 import time
 
 from bambu import BambuMQTT
@@ -19,6 +20,7 @@ class Controller:
             self._id = printer_id
             self._config = None
             self._has_error = False
+            asyncio.create_task(self.task())
 
         def set_config(self, config):
             self._config = config
@@ -29,28 +31,32 @@ class Controller:
                 super().disconnect()
             self._state = self.INIT
             
-        def connect(self):
+        async def connect(self):
             try:
                 print(f"Connecting to MQTT server: {self._config["name"]} @ {self._config["ip"]}")
                 self.disconnect()
-                super().connect(ip=self._config["ip"], serial=self._config["serial"], access_code=self._config["ac"])
+                await super().connect(ip=self._config["ip"], serial=self._config["serial"], access_code=self._config["ac"])
                 self._model.clear_mqtt_error(self._id)
                 self._state = self.ACTIVE
             except Exception as e:
                 self._model.set_mqtt_error(self._id, str(e))
                 self.state = self.ERROR
                 print(f"failed to connect to {self._config["ip"]}: {e}")
+                sys.print_exception(e)
 
         def set_ams_tray(self, ams_id, tray):
             old_tray = self._model.set_ams_tray(self._id, ams_id, tray)
             if old_tray is not None and old_tray.is_empty():
                 controller.schedule_send_spool(self._id, ams_id, tray.get_id())
 
-        def poll(self):
-            if self._state == self.CONFIGURED:
-                self.connect()
-            if self._state == self.ACTIVE:
-                super().poll()
+        async def task(self):
+            while True:
+                if self._state == self.CONFIGURED:
+                    await self.connect()
+                elif self._state == self.ACTIVE:                    
+                    await self.poll()
+                else:
+                    await asyncio.sleep_ms(100)
 
     def __init__(self):
         self._model = Model()
@@ -137,8 +143,6 @@ class Controller:
             self._printers[id] = self.Printer(self._model, self, id)
             self._printers[id].set_config(printer)
         while True:
-            for printer in self._printers.values():
-                printer.poll()
             self.send_spool_if_ready()
             await asyncio.sleep_ms(100)
 

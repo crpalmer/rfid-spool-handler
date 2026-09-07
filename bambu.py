@@ -1,6 +1,8 @@
+import asyncio
 import json
-from umqtt.simple import MQTTClient
+from mqtt import MQTTClient
 import ssl
+import sys
 
 from amstray import AMSTray
 
@@ -10,7 +12,7 @@ class BambuMQTT:
         self._sequence = 0
         self._response_handlers = {}
         
-    def connect(self, ip, serial, access_code):
+    async def connect(self, ip, serial, access_code):
         if ip is None or ip == "":
             return
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -20,29 +22,28 @@ class BambuMQTT:
         self._response_channel = ("device/" + serial + "/report").encode()
 
         self._client = MQTTClient("client", ip, port=8883, user="bblp", password=access_code, ssl=ssl_context)
-        self._client.connect()
+        await self._client.connect()
         self._client.set_callback(lambda topic, msg: self._on_message_callback(topic, msg))
-        self._client.subscribe(self._response_channel)
-        self.make_request("pushing", "pushall", { "version": 1, "push_target": 1 })
+        await self._client.subscribe(self._response_channel)
+        await self.make_request("pushing", "pushall", { "version": 1, "push_target": 1 })
 
-    def disconnect(self):
+    async def disconnect(self):
         if self._client is not None:
             self._client.disconnect()
         self._client = None
         
-    def poll(self):
-        if self._client is not None:
-            self._client.check_msg()
+    async def poll(self):
+        await self._client.wait_msg()
 
     # Todo map sequence number to a callback function
-    def make_request(self, type, command, extra = {}, handle_response = None):
+    async def make_request(self, type, command, extra = {}, handle_response = None):
         payload = { "sequence_id": str(self._sequence), "command": command } | extra
         request = { type: payload }
         if handle_response is not None:
             self._response_handlers[self._sequence] = handle_response
         self._sequence = self._sequence + 1
         print("publish " + str(self._channel) + " --> " + str(request))
-        self._client.publish(self._channel, json.dumps(request).encode())
+        await self._client.publish(self._channel, json.dumps(request).encode())
 
     def _spool_to_ams(self, extra, spool, key1, key2, transform = lambda x: x):
         if key1 in spool:
@@ -82,13 +83,17 @@ class BambuMQTT:
         return False
     
     def _on_message_callback(self, topic, msg_bytes):
-#         try:
         msg = msg_bytes.decode()
-        data = json.loads(msg)
-
+        try:
+            data = json.loads(msg)
+        except Exception as e:
+            print("failed to parse json: " + str(e))
+            print(msg)
+            sys.print_exception(e)
+            return
+ 
         if self._dispatch_handler(data):
             return
-
         if "info" in data:
             if not self._dispatch_handler(data["info"]):
                 self._handle_info(data["info"])
@@ -98,5 +103,4 @@ class BambuMQTT:
                     self._handle_status(data["print"])
                 else:
                     print(f"unhandled data: {data}")
-#         except Exception as e:
-#             print("failed to parse json: " + str(e))
+
