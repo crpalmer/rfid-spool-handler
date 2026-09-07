@@ -1,5 +1,7 @@
-import socket
+import asyncio
 import struct
+import sys
+import time
 from binascii import hexlify
 
 
@@ -16,7 +18,6 @@ def _encode_len(pkt, sz):
     pkt[i] = sz
     return i
 
-
 class MQTTClient:
     def __init__(
         self,
@@ -32,7 +33,8 @@ class MQTTClient:
         if port == 0:
             port = 8883 if ssl else 1883
         self.client_id = client_id
-        self.sock = None
+        self.reader = None
+        self.writer = None
         self.server = server
         self.port = port
         self.ssl = ssl
@@ -48,14 +50,14 @@ class MQTTClient:
         self.lw_retain = False
 
     def _send_str(self, s):
-        self.sock.write(struct.pack("!H", len(s)))
-        self.sock.write(s)
+        self.writer.write(struct.pack("!H", len(s)))
+        self.writer.write(s)
 
-    def _recv_len(self):
+    async def _recv_len(self):
         n = 0
         sh = 0
         while 1:
-            b = self.sock.read(1)[0]
+            b = (await self.reader.readexactly(1))[0]
             n |= (b & 0x7F) << sh
             if not b & 0x80:
                 return n
@@ -72,20 +74,8 @@ class MQTTClient:
         self.lw_qos = qos
         self.lw_retain = retain
 
-    def connect(self, clean_session=True, timeout=None):
-        if self.sock:
-            self.sock.close()
-        self.sock = socket.socket()
-        self.sock.settimeout(timeout)
-        addr = socket.getaddrinfo(self.server, self.port)[0][-1]
-        self.sock.connect(addr)
-        if self.ssl is True:
-            # Legacy support for ssl=True and ssl_params arguments.
-            import ssl
-
-            self.sock = ssl.wrap_socket(self.sock, **self.ssl_params)
-        elif self.ssl:
-            self.sock = self.ssl.wrap_socket(self.sock, server_hostname=self.server)
+    async def connect(self, clean_session=True, timeout=None):
+        (self.reader, self.writer) = await asyncio.open_connection(self.server, self.port, ssl=self.ssl)
         premsg = bytearray(b"\x10\0\0\0\0\0")
         msg = bytearray(b"\x04MQTT\x04\x02\0\0")
 
@@ -105,8 +95,8 @@ class MQTTClient:
 
         i = _encode_len(premsg, sz)
 
-        self.sock.write(premsg, i + 2)
-        self.sock.write(msg)
+        self.writer.write(premsg[0:i+2])
+        self.writer.write(msg)
         # print(hex(len(msg)), hexlify(msg, ":"))
         self._send_str(self.client_id)
         if self.lw_topic:
@@ -115,20 +105,23 @@ class MQTTClient:
         if self.user:
             self._send_str(self.user)
             self._send_str(self.pswd)
-        resp = self.sock.read(4)
+        await self.writer.drain()
+        resp = await self.reader.readexactly(4)
         assert resp[0] == 0x20 and resp[1] == 0x02
         if resp[3] != 0:
             raise MQTTException(resp[3])
         return resp[2] & 1
 
-    def disconnect(self):
-        self.sock.write(b"\xe0\0")
-        self.sock.close()
+    async def disconnect(self):
+        self.writer.write(b"\xe0\0")
+        await self.writer.drain()
+        self.writer.close()
 
-    def ping(self):
-        self.sock.write(b"\xc0\0")
+    async def ping(self):
+        self.writer.write(b"\xc0\0")
+        await self.writer.drain()
 
-    def publish(self, topic, msg, retain=False, qos=0):
+    async def publish(self, topic, msg, retain=False, qos=0):
         pkt = bytearray(b"\x30\0\0\0")
         pkt[0] |= qos << 1 | retain
         sz = 2 + len(topic) + len(msg)
@@ -137,95 +130,90 @@ class MQTTClient:
         assert sz < 2097152
         i = _encode_len(pkt, sz)
         # print(hex(len(pkt)), hexlify(pkt, ":"))
-        self.sock.write(pkt, i + 1)
+        self.writer.write(pkt[0:i+1])
         self._send_str(topic)
         if qos > 0:
             self.pid += 1
             pid = self.pid
             struct.pack_into("!H", pkt, 0, pid)
-            self.sock.write(pkt, 2)
-        self.sock.write(msg)
+            self.writer.write(pkt, 2)
+        self.writer.write(msg)
+        await self.writer.drain()
         if qos == 1:
             while 1:
-                op = self.wait_msg()
+                op = await self.wait_msg()
                 if op == 0x40:
-                    sz = self.sock.read(1)
+                    sz = await self.reader.readexactly(1)
                     assert sz == b"\x02"
-                    rcv_pid = self.sock.read(2)
+                    rcv_pid = await self.reader.readexactly(2)
                     rcv_pid = rcv_pid[0] << 8 | rcv_pid[1]
                     if pid == rcv_pid:
                         return
         elif qos == 2:
             assert 0
 
-    def _send_subunsub(self, topic, typ, ack_op, ack_n, qos=0):
+    async def _send_subunsub(self, topic, typ, ack_op, ack_n, qos=0):
         pkt = bytearray(4)
         pkt[0] = typ
         self.pid += 1
         pid = self.pid
         i = _encode_len(pkt, 4 + len(topic) + (ack_n > 3))
-        self.sock.write(pkt, i + 1)
+        self.writer.write(pkt[0:i+1])
         struct.pack_into("!H", pkt, 0, pid)
-        self.sock.write(pkt, 2)
+        self.writer.write(pkt[0:2])
         self._send_str(topic)
         if ack_n > 3:
-            self.sock.write(bytes((qos,)))
+            self.writer.write(bytes((qos,)))
+        await self.writer.drain()
         while 1:
-            op = self.wait_msg()
+            op = await self.wait_msg()
             if op == ack_op:
-                resp = self.sock.read(ack_n)
+                resp = await self.reader.readexactly(ack_n)
                 assert (resp[1] << 8 | resp[2]) == pid
                 if ack_n > 3 and resp[3] == 0x80:
                     raise MQTTException(resp[3])
                 return
 
-    def subscribe(self, topic, qos=0):
+    async def subscribe(self, topic, qos=0):
         assert self.cb is not None, "Subscribe callback is not set"
-        self._send_subunsub(topic, 0x82, 0x90, 4, qos)
+        await self._send_subunsub(topic, 0x82, 0x90, 4, qos)
 
-    def unsubscribe(self, topic):
-        self._send_subunsub(topic, 0xA2, 0xB0, 3)
+    async def unsubscribe(self, topic):
+        await self._send_subunsub(topic, 0xA2, 0xB0, 3)
 
     # Wait for a single incoming MQTT message and process it.
     # Subscribed messages are delivered to a callback previously
     # set by .set_callback() method. Other (internal) MQTT
     # messages processed internally.
-    def wait_msg(self):
-        res = self.sock.read(1)
-        self.sock.setblocking(True)
+    async def wait_msg(self):
+        res = await self.reader.readexactly(1)
         if res is None:
             return None
         if res == b"":
             raise OSError(-1)
         if res == b"\xd0":  # PINGRESP
-            sz = self.sock.read(1)[0]
+            sz = (await self.reader.readexactly(1))[0]
             assert sz == 0
             return None
         op = res[0]
         if op & 0xF0 != 0x30:
             return op
-        sz = self._recv_len()
-        topic_len = self.sock.read(2)
+        sz = await self._recv_len()
+        topic_len = await self.reader.readexactly(2)
         topic_len = (topic_len[0] << 8) | topic_len[1]
-        topic = self.sock.read(topic_len)
+        topic = await self.reader.readexactly(topic_len)
         sz -= topic_len + 2
         if op & 6:
-            pid = self.sock.read(2)
+            pid = await self.reader.readexactly(2)
             pid = pid[0] << 8 | pid[1]
             sz -= 2
-        msg = self.sock.read(sz)
+        msg = await self.reader.readexactly(sz)
         self.cb(topic, msg)
         if op & 6 == 2:
             pkt = bytearray(b"\x40\x02\0\0")
             struct.pack_into("!H", pkt, 2, pid)
-            self.sock.write(pkt)
+            self.writer.write(pkt)
+            await self.writer.drain()
         elif op & 6 == 4:
             assert 0
         return op
-
-    # Checks whether a pending message from server is available.
-    # If not, returns immediately with None. Otherwise, does
-    # the same processing as wait_msg.
-    def check_msg(self):
-        self.sock.setblocking(False)
-        return self.wait_msg()
