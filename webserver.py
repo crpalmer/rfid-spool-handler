@@ -3,6 +3,7 @@ from microdot.utemplate import Template
 from controller import controller
 
 import asyncio
+import gc
 import json
 import machine
 import os
@@ -102,6 +103,11 @@ async def wifi_config(request):
     if form_to_json(request, [ "ssid", "password", "hostname" ], wifi):
         controller.set_wifi_config(wifi)
     return Template('wifi.tpl').render(controller.get_model())
+
+@app.after_request
+def gc_collect(request, response):
+    gc.collect()
+    print(f"memory: used {gc.mem_alloc()} free {gc.mem_free()}")
 
 def web_server_start():
     asyncio.create_task(app.start_server(port=80, debug=False))
