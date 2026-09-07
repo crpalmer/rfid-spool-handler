@@ -29,6 +29,7 @@ async def main():
         rfid_reader.run()
     except Exception as e:
         print(f"Failed to find RFID reader: {e}\nNO RFIDS WILL BE SCANNED DURING THIS RUN")
+        controller.set_rfid_error(str(e))
 
     while True:
         await asyncio.sleep(30)

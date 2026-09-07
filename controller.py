@@ -137,6 +137,9 @@ class Controller:
         await asyncio.sleep(2)
         machine.reset()
     
+    def set_rfid_error(self, error):
+        self._model.set_rfid_error(error)
+
     async def run(self):
         wifi_connect(self._model.wifi)
         for (id, printer) in self._model.get_printers().items():

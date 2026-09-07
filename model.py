@@ -36,6 +36,7 @@ class Model:
         self.last_filament_id = None
         self.mqtt_error = {}
         self.transient_error = None
+        self.rfid_error = None
 
         try:
             os.mkdir("data")
@@ -176,3 +177,9 @@ class Model:
         error = self.transient_error
         self.transient_error = None
         return error
+    
+    def set_rfid_error(self, error):
+        self.rfid_error = error
+
+    def get_rfid_error(self):
+        return self.rfid_error

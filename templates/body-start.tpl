@@ -44,4 +44,13 @@
                     </div>
                 </div>
             {% endif %}
+            {% set rfid_error = model.get_rfid_error() %}
+            {% if rfid_error is not None %}
+                <div class="col col4 is-center">
+                    <div class="card bd-error">
+                        <header><h4>RFID Reader Error</h4></header>
+                        <p>{[rfid_error]}</p>
+                    </div>
+                </div>
+            {% endif %}
         </div>
