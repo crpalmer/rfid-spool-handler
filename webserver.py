@@ -75,7 +75,6 @@ async def printer_edit(request):
     if id is not None:
         printer = {}
         if form_to_json(request, printer_args, printer):
-            print(printer)
             controller.update_printer(id, printer)
             return Response.redirect('/printer')
 

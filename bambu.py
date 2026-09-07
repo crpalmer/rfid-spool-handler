@@ -101,6 +101,3 @@ class BambuMQTT:
             if not self._dispatch_handler(data["print"]):
                 if data["print"]["command"] == "push_status":
                     self._handle_status(data["print"])
-                else:
-                    print(f"unhandled data: {data}")
-

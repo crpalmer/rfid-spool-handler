@@ -62,7 +62,6 @@ class RFIDReader:
             if rfid_busy:
                 rfid_busy = await self.is_present_async(30000)
             elif await self.is_present_async(30000):
-                print("is_present!")
                 spool = await self.read_tag_async()
                 if spool is not None:
                     controller.record_rfid_read(spool)

@@ -158,7 +158,6 @@ class Model:
             json.dump(wifi, f)
 
     def set_mqtt_error(self, printer_id, error):
-        print("{printer_id}: {error}")
         self.mqtt_error[printer_id] = error
     
     def clear_mqtt_error(self, printer_id):
