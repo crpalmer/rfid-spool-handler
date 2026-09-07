@@ -99,7 +99,7 @@ async def printer_config(request):
 @app.route('/wifi', methods=['GET', 'POST'])
 async def wifi_config(request):
     wifi = {}
-    if form_to_json(request, [ "ssid", "password" ], wifi):
+    if form_to_json(request, [ "ssid", "password", "hostname" ], wifi):
         controller.set_wifi_config(wifi)
     return Template('wifi.tpl').render(controller.get_model())
 

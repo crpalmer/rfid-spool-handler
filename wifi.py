@@ -3,13 +3,17 @@ import network
 import time
  
 def wifi_connect(wifi):
+    hostname = wifi.get("hostname", "")
+    if hostname != "":
+        network.hostname(hostname)
+        
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
-    ssid = wifi["ssid"]
-    password = wifi["password"]
+    ssid = wifi.get("ssid", "")
+    password = wifi.get("password", "")
     
-    if ssid is not None and ssid != "":
+    if ssid != "":
         print(f"Connecting to WiFi: {ssid}")
         wlan.connect(ssid, password)
         timeout = 30

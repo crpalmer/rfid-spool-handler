@@ -11,6 +11,8 @@
             <input id="ssid" name="ssid" type="text" size="20" placeholder="your-ssid" required value="{[wifi["ssid"]]}" />
             <label for="password">Password</label>
             <input id="password" name="password" type="password" size="20" placeholder="xxxxxxxxxxxxxxx" value="{[wifi["password"]]}" />
+            <label for="hostname">Hostname</label>
+            <input id="hostname" name="hostname" value="{[wifi.get("hostname", "")]}"/>
             <p>&nbsp;</p>
             <button type="submit">Save</button>
         </form>
