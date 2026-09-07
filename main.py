@@ -32,6 +32,6 @@ async def main():
         controller.set_rfid_error(str(e))
 
     while True:
-        await asyncio.sleep(30)
+        await asyncio.sleep(1000)
 
 asyncio.run(main())
