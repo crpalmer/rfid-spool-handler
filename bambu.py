@@ -26,6 +26,7 @@ class BambuMQTT:
         self._client.set_callback(lambda topic, msg: self._on_message_callback(topic, msg))
         await self._client.subscribe(self._response_channel)
         await self.make_request("pushing", "pushall", { "version": 1, "push_target": 1 })
+        await self.make_request("info", "get_version")
 
     async def disconnect(self):
         if self._client is not None:
