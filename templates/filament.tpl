@@ -4,23 +4,25 @@
 <body>
 {% include "body-start.tpl" 'filament', model %}
     <h1>Filaments</h1>
-    <div class="row">
-        <div class="col col-1">ID</div>
-        <div class="col col-1">type</div>
-        <div class="col col-1">Brand</div>
-        <div class="col col-2">Sub-type</div>
-<!--
-        <div class="col col-1">Color</div>
-        <div class="col col-1">TD</div>
-        <div class="col col-1">Temp</div>
-        <div class="col col-1">Bed Temp</div>
--->
-    </div>
-{% for id, f in model.filament.items() %}
+    <b>
+        <div class="row">
+            <div class="col col-1">ID</div>
+            <div class="col col-1">Brand</div>
+            <div class="col col-1">Type</div>
+            <div class="col col-2">Sub-type</div>
+    <!--
+            <div class="col col-1">Color</div>
+            <div class="col col-1">TD</div>
+            <div class="col col-1">Temp</div>
+            <div class="col col-1">Bed Temp</div>
+    -->
+        </div>
+    </b>
+{% for id, f in sorted(model.filament.items(), key=lambda item: (item[1].get("brand", "").upper(), item[1].get("type", "").upper(), item[1].get("subtype", "").upper())) %}
     <div class="row">
         <div class="col col-1">{[f['filament_id'] if 'filament_id' in f else '?']}</div>
-        <div class="col col-1">{[f['type'] if 'type' in f else '']}</div>
         <div class="col col-1">{[f['brand'] if 'brand' in f else '']}</div>
+        <div class="col col-1">{[f['type'] if 'type' in f else '']}</div>
         <div class="col col-2">{[f['subtype'] if 'subtype' in f else '']}</div>
 <!--
         <div class="col col-1"><input type="color" readonly value="{[f.get('color_hex')]}" style="pointer-events: none" tabindex="-1"/></div>

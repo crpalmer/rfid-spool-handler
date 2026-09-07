@@ -4,14 +4,16 @@
 <body>
 {% include "body-start.tpl" 'printer', model %}
     <h1>Printers</h1>
-    <div class="row">
-        <div class="col col-1">&nbsp;</div>
-        <div class="col col-2">Name</div>
-        <div class="col col-1">IP Address</div>
-        <div class="col col-2">Serial #</div>
-        <div class="col col-1">Access Code</div>
-    </div>
-{% for (id, printer) in model.get_printers().items() %}
+    <b>
+        <div class="row">
+            <div class="col col-1">&nbsp;</div>
+            <div class="col col-2">Name</div>
+            <div class="col col-1">IP Address</div>
+            <div class="col col-2">Serial #</div>
+            <div class="col col-1">Access Code</div>
+        </div>
+    </b>
+{% for (id, printer) in sorted(model.get_printers().items(), key=lambda i: (i[1].get("name", "").upper(), i[1].get("ip"))) %}
     <div class="row">
         <div class="col col-1">{[id]}</div>
         <div class="col col-2">{[printer.get("name")]}</div>

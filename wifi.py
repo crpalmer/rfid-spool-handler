@@ -26,5 +26,5 @@ def wifi_connect(wifi):
 
     wlan = network.WLAN(network.WLAN.IF_AP)
     wlan.active(True)
-    wlan.config(ssid="rfid-spool-handler", password="password")
+    wlan.config(ssid="rfid-spool-handler", security=0	)
     print(f"AP active with IP: {wlan.ifconfig()[0]}")

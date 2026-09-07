@@ -5,11 +5,12 @@
 {% if id is not None %}
             <input type="hidden" name="id" value="{[id]}"/>
 {% endif %}
-            <label for="filament_id">filament_id (to match with OrcaSlicer)</label>
-            <input id="filament_id" name="filament_id" type="text" placeholder="id (max 8)" pattern=".{1,8}" value="{[f.get('filament_id', '')]}" required />
-            <label for="brand">Brand</label>
+            <label for="filament_id">filament_id (required)</label>
+            <input id="filament_id" name="filament_id" type="text" placeholder="id (max 8)" pattern=".{1,8}"
+                value="{[f.get('filament_id', model.get_last_filament_id())]}" required />
+            <label for="brand">Brand (required)</label>
             <input id="brand" name="brand" type="text" placeholder="manufacturer" value="{[f.get('brand', '')]}" required />
-            <label for="type">Type</label>
+            <label for="type">Type (required)</label>
             <input id="type" name="type" type="text" placeholder="material type, e.g. PLA, PETG, PLA-S..." value="{[f.get('type', '')]}"  required />
             <label for="subtype">Sub-type</label>
             <input id="subtype" name="subtype" type="text" placeholder="subtype" value="{[f.get('subtype', '')]}" />
